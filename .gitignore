@@ -3,4 +3,5 @@ mrcc-map
 /src/tags
 /src/*.o
 /docs/tmp_*
-
+/build
+CMakeLists.txt.*

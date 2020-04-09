@@ -1,9 +1,6 @@
 // mrcc - A C Compiler system on MapReduce
 // Zhiqiang Ma, https://www.ericzma.com
-
-#ifndef _HEADER_IO_H
-# define _HEADER_IO_H
-
+#pragma once
 
 #ifndef O_BINARY
 #  define O_BINARY 0
@@ -18,5 +15,3 @@ int mrcc_close(int fd);
 int open_read(const char *fname, int *ifd, off_t *fsize);
 
 int copy_file_to_fd(const char *in_fname, int out_fd);
-
-#endif //_HEADER_IO_H

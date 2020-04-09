@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
 #include "mrcc.h"
 #include "files.h"
 #include "args.h"
@@ -17,7 +18,7 @@
 #include "compile.h"
 
 
-const char* mrcc_version = "0.1.0";
+const char* mrcc_version = MRCC_VERSION;
 
 const char* rs_program_name = "mrcc";
 

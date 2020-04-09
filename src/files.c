@@ -31,11 +31,15 @@
 #include "stringutils.h"
 #include "trace.h"
 
-/*
- * get the basename withou ext
- * the caller is responsible to free the return string
+/**
+ * Get the basename without extension
+ *
+ * The caller is responsible to free the return string.
+ * @param sfile source filename.
+ * @return newly allocated basename without extension.
  */
-char* get_basename_no_ext(char* sfile)
+char*
+get_basename_no_ext(const char* sfile)
 {
     char* basename_no_ext = NULL;
     char* dot = NULL;
@@ -44,11 +48,17 @@ char* get_basename_no_ext(char* sfile)
     basename_no_ext = strdup(basename);
     dot = find_extension(basename_no_ext);
     *dot = '\0';
-    
+
     return basename_no_ext;
 }
 
-const char * find_basename(const char *sfile)
+/**
+ * @brief Find the basename of a filename.
+ * @param sfile source filename.
+ * @return the basename part of sfile, or sfile if there is no path.
+ */
+const char*
+find_basename(const char *sfile)
 {
     if (!sfile)
         return sfile;
@@ -61,9 +71,12 @@ const char * find_basename(const char *sfile)
 
 
 /**
- * Return a pointer to the extension, including the dot, or NULL.
- **/
-char * find_extension(char *sfile)
+ * @brief Return a pointer to the extension, including the dot, or NULL.
+ * @param sfile source filename.
+ * @return pointer to the extension, or NULL if not found.
+ */
+char *
+find_extension(const char *sfile)
 {
     char *dot;
 
@@ -77,7 +90,7 @@ char * find_extension(char *sfile)
 }
 
 
-const char * find_extension_const(const char *sfile) 
+const char * find_extension_const(const char *sfile)
 {
     /* The following intermediate variable works around a bug in gcc 4.2.3 where
      * for the code above gcc spuriously reports "warning: passing argument 1
@@ -233,7 +246,8 @@ int output_from_source(const char *sfile, const char *out_extn, char **ofile)
 {
     char *slash;
 
-    if ((slash = strrchr(sfile, '/')))
+    slash = strrchr(sfile, '/');
+    if (slash)
         sfile = slash+1;
     if (strlen(sfile) < 3) {
         rs_log_error("source file %s is bogus", sfile);
@@ -256,24 +270,29 @@ const char * preproc_exten(const char *e)
 {
     if (e[0] != '.')
         return NULL;
+
     e++;
     if (!strcmp(e, "i") || !strcmp(e, "c")) {
         return ".i";
-    } else if (!strcmp(e, "c") || !strcmp(e, "cc")
+    }
+
+    if (!strcmp(e, "c") || !strcmp(e, "cc")
                || !strcmp(e, "cpp") || !strcmp(e, "cxx")
                || !strcmp(e, "cp") || !strcmp(e, "c++")
                || !strcmp(e, "C") || !strcmp(e, "ii")) {
         return ".ii";
-    } else if(!strcmp(e,"mi") || !strcmp(e, "m")) {
+    }
+    if(!strcmp(e,"mi") || !strcmp(e, "m")) {
         return ".mi";
-    } else if(!strcmp(e,"mii") || !strcmp(e,"mm")
+    }
+    if(!strcmp(e,"mii") || !strcmp(e,"mm")
                 || !strcmp(e,"M")) {
         return ".mii";
-    } else if (!strcasecmp(e, "s")) {
-        return ".s";
-    } else {
-        return NULL;
     }
+    if (!strcasecmp(e, "s")) {
+        return ".s";
+    }
+    return NULL;
 }
 
 

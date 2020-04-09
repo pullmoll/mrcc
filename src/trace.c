@@ -23,7 +23,7 @@ extern const char* rs_program_name;
 void trace_version()
 {
     rs_trace("%s ; built %s %s",
-        rs_program_name, __DATE__, __TIME__);
+	rs_program_name, __DATE__, __TIME__);
     return ;
 }
 
@@ -40,11 +40,11 @@ void note_info_time(char* info)
 
     time_t curtime;
 
-    gettimeofday(&tv, NULL); 
+    gettimeofday(&tv, NULL);
     curtime=tv.tv_sec;
 
     strftime(buffer, STR_BUFFER_SIZE, "%m-%d-%Y %T.", localtime(&curtime));
-    
+
     rs_log_info("info: %s. time: %s%06ld", info, buffer, tv.tv_usec);
 }
 
@@ -69,22 +69,23 @@ void rs_remove_all_loggers(void)
     struct rs_logger_list *l, *next;
 
     for (l = logger_list; l; l = next) {
-        next = l -> next;       /* save before destruction */
-        free(l);
+	next = l -> next;       /* save before destruction */
+	free(l);
     }
     logger_list = NULL;
 }
 
 
 void rs_add_logger(rs_logger_fn fn,
-                   int max_level,
-                   void *private_ptr,
-                   int private_int)
+		   int max_level,
+		   void *private_ptr,
+		   int private_int)
 {
     struct rs_logger_list *l;
 
-    if ((l = malloc(sizeof *l)) == NULL)
-        return;
+    l = malloc(sizeof *l);
+    if (l == NULL)
+	return;
 
     l->fn = fn;
     l->max_level = max_level;
@@ -100,23 +101,23 @@ void rs_add_logger(rs_logger_fn fn,
  * Remove only the logger that exactly matches the specified parameters
  **/
 void rs_remove_logger(rs_logger_fn fn,
-                      int max_level,
-                      void *private_ptr,
-                      int private_int)
+		      int max_level,
+		      void *private_ptr,
+		      int private_int)
 {
     struct rs_logger_list *l, **pl;
 
     for (pl = &logger_list; *pl; pl = &((*pl)->next)) {
-        l = *pl;
-        if (l->fn == fn
-            && l->max_level == max_level
-            && l->private_ptr == private_ptr
-            && l->private_int == private_int) {
-            /* unhook from list by adjusting whoever points to this. */
-            *pl = l->next;
-            free(l);
-            return;
-        }
+	l = *pl;
+	if (l->fn == fn
+	    && l->max_level == max_level
+	    && l->private_ptr == private_ptr
+	    && l->private_int == private_int) {
+	    /* unhook from list by adjusting whoever points to this. */
+	    *pl = l->next;
+	    free(l);
+	    return;
+	}
     }
 }
 
@@ -136,27 +137,29 @@ rs_trace_set_level(rs_loglevel level)
 /**
  * Work out a log level from a string name.
  *
- * Returns -1 for invalid names.
+ * @param name string name for the log level.
+ *
+ * @return RS_LOG_... level, or -1 for invalid names.
  */
 int
 rs_loglevel_from_name(const char *name)
 {
     if (!strcmp(name, "emerg") || !strcmp(name, "emergency"))
-        return RS_LOG_EMERG;
+	return RS_LOG_EMERG;
     else if (!strcmp(name, "alert"))
-        return RS_LOG_ALERT;
+	return RS_LOG_ALERT;
     else if (!strcmp(name, "critical") || !strcmp(name, "crit"))
-        return RS_LOG_CRIT;
+	return RS_LOG_CRIT;
     else if (!strcmp(name, "error") || !strcmp(name, "err"))
-        return RS_LOG_ERR;
+	return RS_LOG_ERR;
     else if (!strcmp(name, "warning") || !strcmp(name, "warn"))
-        return RS_LOG_WARNING;
+	return RS_LOG_WARNING;
     else if (!strcmp(name, "notice") || !strcmp(name, "note"))
-        return RS_LOG_NOTICE;
+	return RS_LOG_NOTICE;
     else if (!strcmp(name, "info"))
-        return RS_LOG_INFO;
+	return RS_LOG_INFO;
     else if (!strcmp(name, "debug"))
-        return RS_LOG_DEBUG;
+	return RS_LOG_DEBUG;
 
     return -1;
 }
@@ -171,14 +174,21 @@ static void rs_lazy_default(void)
     static int called;
 
     if (called)
-        return;
+	return;
 
     called = 1;
     if (logger_list == NULL)
-        rs_add_logger(rs_logger_file, RS_LOG_WARNING, NULL, STDERR_FILENO);
+	rs_add_logger(rs_logger_file, RS_LOG_WARNING, NULL, STDERR_FILENO);
 }
 
-/* Heart of the matter */
+/**
+ * Heart of the matter. Log a formatted string with optional varargs.
+ *
+ * @param flags log level and flags.
+ * @param caller_fn_name caller function name (e.g. __func__).
+ * @param fmt pointer to format string.
+ * @param va list of variable args.
+ */
 static void
 rs_log_va(int flags, char const *caller_fn_name, char const *fmt, va_list va)
 {
@@ -189,25 +199,25 @@ rs_log_va(int flags, char const *caller_fn_name, char const *fmt, va_list va)
 
     if (level <= rs_trace_level)
       for (l = logger_list; l; l = l->next)
-          if (level <= l->max_level) {
-              /* We need to use va_copy() here, because functions like vsprintf
-               * may destructively modify their va_list argument, but we need
-               * to ensure that it's still valid next time around the loop. */
-              va_list copied_va;
-              VA_COPY(copied_va, va);
-              l->fn(flags, caller_fn_name,
-                    fmt, copied_va, l->private_ptr, l->private_int);
-              VA_COPY_END(copied_va);
-          }
+	  if (level <= l->max_level) {
+	      /* We need to use va_copy() here, because functions like vsprintf
+	       * may destructively modify their va_list argument, but we need
+	       * to ensure that it's still valid next time around the loop. */
+	      va_list copied_va;
+	      VA_COPY(copied_va, va);
+	      l->fn(flags, caller_fn_name,
+		    fmt, copied_va, l->private_ptr, l->private_int);
+	      VA_COPY_END(copied_va);
+	  }
 }
 
 
 void rs_format_msg(char *buf,
-                   size_t buf_len,
-                   int flags,
-                   const char *fn,
-                   const char *fmt,
-                   va_list va)
+		   size_t buf_len,
+		   int flags,
+		   const char *fn,
+		   const char *fmt,
+		   va_list va)
 {
     unsigned level = flags & RS_LOG_PRIMASK;
     int len;
@@ -217,27 +227,27 @@ void rs_format_msg(char *buf,
     len = 0;
 
     if (!(flags & RS_LOG_NO_PROGRAM)) {
-        strcpy(buf, rs_program_name);
-        len = strlen(buf);
+	strcpy(buf, rs_program_name);
+	len = strlen(buf);
     }
 
     if (!(flags & RS_LOG_NO_PID)) {
-        /* You might like to cache the pid, but that would cause trouble when we fork. */
-        sprintf(buf+len, "[%d] ", (int) getpid());
+	/* You might like to cache the pid, but that would cause trouble when we fork. */
+	sprintf(buf+len, "[%d] ", (int) getpid());
     } else if (~flags & RS_LOG_NO_PROGRAM) {
-        strcat(buf+len, ": ");
+	strcat(buf+len, ": ");
     }
     len = strlen(buf);
 
     if (!(flags & RS_LOG_NONAME) && fn) {
-        sprintf(buf+len, "(%s) ", fn);
-        len = strlen(buf);
+	sprintf(buf+len, "(%s) ", fn);
+	len = strlen(buf);
     }
 
     sv = rs_severities[level];
     if (*sv) {
-        strcpy(buf + len, sv);
-        len = strlen(buf);
+	strcpy(buf + len, sv);
+	len = strlen(buf);
     }
 
     vsnprintf(buf + len, buf_len - len, fmt, va);
@@ -272,7 +282,7 @@ void rs_log0(int level, char const *fn, char const *fmt, ...)
 
 void
 rs_logger_syslog(int flags, const char *fn, char const *fmt, va_list va,
-                 void * UNUSED(private_ptr), int UNUSED(private_int))
+		 void * UNUSED(private_ptr), int UNUSED(private_int))
 {
     /* NOTE NO TRAILING NUL */
     char buf[4090];
@@ -280,15 +290,15 @@ rs_logger_syslog(int flags, const char *fn, char const *fmt, va_list va,
     /* you're never going to want program or pid in a syslog message,
      * because it's redundant. */
     rs_format_msg(buf, sizeof buf,
-                  flags | RS_LOG_NO_PROGRAM | RS_LOG_NO_PID,
-                  fn, fmt, va);
+		  flags | RS_LOG_NO_PROGRAM | RS_LOG_NO_PID,
+		  fn, fmt, va);
     syslog(flags & RS_LOG_PRIMASK, "%s", buf);
 }
 
 
 void
 rs_logger_file(int flags, const char *fn, char const *fmt, va_list va,
-               void * UNUSED(private_ptr), int log_fd)
+	       void * UNUSED(private_ptr), int log_fd)
 {
     /* NOTE NO TRAILING NUL */
     char buf[4090];
@@ -298,7 +308,7 @@ rs_logger_file(int flags, const char *fn, char const *fmt, va_list va,
 
     len = strlen(buf);
     if (len > (int) sizeof buf - 2)
-        len = (int) sizeof buf - 2;
+	len = (int) sizeof buf - 2;
     strcpy(&buf[len], "\n");
 
     (void) write(log_fd, buf, len+1);

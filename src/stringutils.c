@@ -27,13 +27,27 @@
 
 #include "stringutils.h"
 
-int str_startswith(const char *head, const char *worm)
+/**
+ * @brief Check if a string @p worm starts with the string @p head.
+ * @param head head to check for.
+ * @param worm string to inspect.
+ * @return 1 if worm starts with head, or 0 otherwise.
+ */
+int
+str_startswith(const char *head, const char *worm)
 {
     return !strncmp(head, worm, strlen(head));
 }
 
 
-int str_endswith(const char *tail, const char *tiger)
+/**
+ * @brief Check if a string @p tiger ends with the string @p tail.
+ * @param tail tail to check for.
+ * @param tiger string to inspect.
+ * @return 1 if @p tiger ends with @p tail, or 0 otherwise.
+ */
+int
+str_endswith(const char *tail, const char *tiger)
 {
     size_t len_tail = strlen(tail);
     size_t len_tiger = strlen(tiger);
@@ -44,13 +58,15 @@ int str_endswith(const char *tail, const char *tiger)
     return !strcmp(tiger + len_tiger - len_tail, tail);
 }
 
-
-
-
-
-
-
-static void dopr_outch(char *buffer, size_t *currlen, size_t maxlen, char c)
+/**
+ * @brief Append a character @p c to an output @p buffer.
+ * @param buffer pointer to output buffer.
+ * @param currlen current number of characters in output buffer.
+ * @param maxlen maximum number of characters in output buffer.
+ * @param c character to append.
+ */
+static void
+dopr_outch(char *buffer, size_t *currlen, size_t maxlen, char c)
 {
     if (*currlen < maxlen) {
         buffer[(*currlen)] = c;
@@ -59,7 +75,7 @@ static void dopr_outch(char *buffer, size_t *currlen, size_t maxlen, char c)
 }
 
 static void fmtstr(char *buffer, size_t *currlen, size_t maxlen,
-            const char *value, int flags, int min, int max)
+                   const char *value, int flags, int min, int max)
 {
     int padlen, strln;     /* amount to pad */
     int cnt = 0;
@@ -71,23 +87,25 @@ static void fmtstr(char *buffer, size_t *currlen, size_t maxlen,
         value = "<NULL>";
     }
 
-    for (strln = 0; value[strln]; ++strln); /* strlen */
+    /* strlen */
+    for (strln = 0; value[strln]; ++strln)
+        ;
     padlen = min - strln;
     if (padlen < 0)
         padlen = 0;
     if (flags & DP_F_MINUS)
         padlen = -padlen; /* Left Justify */
 
-    while ((padlen > 0) && (cnt < max)) {
+    while (padlen > 0 && cnt < max) {
         dopr_outch (buffer, currlen, maxlen, ' ');
         --padlen;
         ++cnt;
     }
-    while (*value && (cnt < max)) {
+    while (*value && cnt < max) {
         dopr_outch (buffer, currlen, maxlen, *value++);
         ++cnt;
     }
-    while ((padlen < 0) && (cnt < max)) {
+    while (padlen < 0 && cnt < max) {
         dopr_outch (buffer, currlen, maxlen, ' ');
         ++padlen;
         ++cnt;
@@ -97,7 +115,7 @@ static void fmtstr(char *buffer, size_t *currlen, size_t maxlen,
 /* Have to handle DP_F_NUM (ie 0x and 0 alternates) */
 
 static void fmtint(char *buffer, size_t *currlen, size_t maxlen,
-            long value, int base, int min, int max, int flags)
+                   long value, int base, int min, int max, int flags)
 {
     int signvalue = 0;
     unsigned long uvalue;
@@ -124,21 +142,24 @@ static void fmtint(char *buffer, size_t *currlen, size_t maxlen,
         }
     }
 
-    if (flags & DP_F_UP) caps = 1; /* Should characters be upper case? */
+    caps = flags & DP_F_UP; /* Should characters be upper case? */
 
     do {
         convert[place++] =
-            (caps? "0123456789ABCDEF":"0123456789abcdef")
-            [uvalue % (unsigned)base  ];
-        uvalue = (uvalue / (unsigned)base );
-    } while(uvalue && (place < 20));
-    if (place == 20) place--;
-    convert[place] = 0;
+                (caps? "0123456789ABCDEF":"0123456789abcdef")
+                [uvalue % (unsigned)base];
+        uvalue = uvalue / (unsigned)base;
+    } while (uvalue && (place < 20));
+    if (place == 20)
+        place--;
+    convert[place] = '\0';
 
     zpadlen = max - place;
     spadlen = min - MAX (max, place) - (signvalue ? 1 : 0);
-    if (zpadlen < 0) zpadlen = 0;
-    if (spadlen < 0) spadlen = 0;
+    if (zpadlen < 0)
+        zpadlen = 0;
+    if (spadlen < 0)
+        spadlen = 0;
     if (flags & DP_F_ZERO) {
         zpadlen = MAX(zpadlen, spadlen);
         spadlen = 0;
@@ -208,7 +229,8 @@ static LLONG ROUND(LDOUBLE value)
 
     intpart = (LLONG)value;
     value = value - intpart;
-    if (value >= 0.5) intpart++;
+    if (value >= 0.5)
+        intpart++;
 
     return intpart;
 }
@@ -222,9 +244,10 @@ static double my_modf(double x0, double *iptr)
     double x = x0;
     double f = 1.0;
 
-    for (i=0;i<100;i++) {
+    for (i = 0; i < 100; i++) {
         l = (long)x;
-        if (l <= (x+1) && l >= (x-1)) break;
+        if (l <= (x+1) && l >= (x-1))
+            break;
         x *= 0.1;
         f *= 10.0;
     }
@@ -250,7 +273,7 @@ static double my_modf(double x0, double *iptr)
 
 
 static void fmtfp (char *buffer, size_t *currlen, size_t maxlen,
-           LDOUBLE fvalue, int min, int max, int flags)
+                   LDOUBLE fvalue, int min, int max, int flags)
 {
     int signvalue = 0;
     double ufvalue;
@@ -291,7 +314,7 @@ static void fmtfp (char *buffer, size_t *currlen, size_t maxlen,
 #endif
 
 #if 0
-     if (max == 0) ufvalue += 0.5; /* if max = 0 we must round */
+    if (max == 0) ufvalue += 0.5; /* if max = 0 we must round */
 #endif
 
     /*
@@ -324,7 +347,7 @@ static void fmtfp (char *buffer, size_t *currlen, size_t maxlen,
         /* idx = (int) (((double)(temp*0.1) -intpart +0.05) *10.0); */
         /* printf ("%llf, %f, %x\n", temp, intpart, idx); */
         iconvert[iplace++] =
-            (caps? "0123456789ABCDEF":"0123456789abcdef")[idx];
+                (caps? "0123456789ABCDEF":"0123456789abcdef")[idx];
     } while (intpart && (iplace < 311));
     if (iplace == 311) iplace--;
     iconvert[iplace] = 0;
@@ -339,7 +362,7 @@ static void fmtfp (char *buffer, size_t *currlen, size_t maxlen,
             /* idx = (int) ((((temp/10) -fracpart) +0.05) *10); */
             /* printf ("%lf, %lf, %ld\n", temp, fracpart, idx); */
             fconvert[fplace++] =
-            (caps? "0123456789ABCDEF":"0123456789abcdef")[idx];
+                    (caps? "0123456789ABCDEF":"0123456789abcdef")[idx];
         } while(fracpart && (fplace < 311));
         if (fplace == 311) fplace--;
     }
@@ -726,5 +749,3 @@ size_t strlcpy(char *d, const char *s, size_t bufsize)
     d[len] = 0;
     return ret;
 }
-
-

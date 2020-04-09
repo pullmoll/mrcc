@@ -31,52 +31,72 @@
 #include "trace.h"
 #include "args.h"
 
-
-
-unsigned int argv_len(char **a)
+/**
+ * @brief Count the number of arguments.
+ * @param argv array of arguments.
+ * @return index of first NULL entry.
+ */
+unsigned int
+argv_len(char* argv[])
 {
     unsigned int i;
-    for (i = 0; a[i]; i++);                                                                                                        
+    for (i = 0; argv[i]; i++)
+        ;
     return i;
 }
 
 
-/* Copy an argv array, adding extra NULL elements to the end to allow for
+/**
+ * Copy an argv array, adding extra NULL elements to the end to allow for
  * adding more arguments later.
+ *
+ * @param from argv[] to copy from
+ * @param out pointer to argv[] to copy to and resize
+ * @param delta delta by which to adjust the argv[] number of entries
  */
-int copy_argv(char **from, char ***out, int delta)
+int
+copy_argv(char *from[], char **out[], int delta)
 {
-    char **b;
+    char **argv;
     int l, i;
 
     l = argv_len(from);
-    b = (char**) malloc((l+1+delta) * (sizeof from[0]));
-                                                                             
-    if (b == NULL) {
+    argv = (char**) malloc((l+1+delta) * (sizeof from[0]));
+
+    if (argv == NULL) {
         rs_log_error("failed to allocate copy of argv");
         return EXIT_OUT_OF_MEMORY;
     }
-                                                                                                                       
+
     for (i = 0; i < l; i++) {
-        if ((b[i] = strdup(from[i])) == NULL) {
+        argv[i] = strdup(from[i]);
+        if (argv[i] == NULL) {
             rs_log_error("failed to duplicate element %d", i);
             return EXIT_OUT_OF_MEMORY;
         }
     }
-                                                                                                                       
-    b[l] = NULL;
 
-    *out = b;
+    argv[l] = NULL;
+
+    *out = argv;
     return 0;
 }
 
-int find_compiler(char **argv, char ***out_argv)
+/**
+ * @brief Find the compiler (mrcc) and change it to cc.
+ * @param argv
+ * @param out_argv
+ * @return
+ */
+int
+find_compiler(char *argv[], char **out_argv[])
 {
     int ret;
     if (argv[1][0] == '-'
-        || is_source(argv[1])
-        || is_object(argv[1])) {
-        if ((ret = copy_argv(argv, out_argv, 0)) != 0) {
+            || is_source(argv[1])
+            || is_object(argv[1])) {
+        ret = copy_argv(argv, out_argv, 0);
+        if (ret != 0) {
             return ret;
         }
 
@@ -95,19 +115,22 @@ int find_compiler(char **argv, char ***out_argv)
 
 
 
-/* Subroutine of expand_preprocessor_options().
+/**
+ * Subroutine of expand_preprocessor_options().
  * Calculate how many extra arguments we'll need to convert
  * a "-Wp,..." option into regular gcc options.
  * Returns the number of extra arguments needed.
  */
-static int count_extra_args(char *dash_Wp_option) {
+static int
+count_extra_args(char *dash_Wp_option)
+{
     int extra_args = 0;
     char *comma = dash_Wp_option + strlen("-Wp");
     while (comma != NULL) {
         char *opt = comma + 1;
         comma = strchr(opt, ',');
         if (str_startswith("-MD,", opt) ||
-            str_startswith("-MMD,", opt))
+                str_startswith("-MMD,", opt))
         {
             char *filename = comma + 1;
             comma = strchr(filename, ',');
@@ -120,23 +143,26 @@ static int count_extra_args(char *dash_Wp_option) {
 }
 
 
-/* Subroutine of expand_preprocessor_options().
+/**
+ * Subroutine of expand_preprocessor_options().
  * Convert a "-Wp,..." option into one or more regular gcc options.
  * Copy the resulting gcc options to dest_argv, which should be
  * pre-allocated by the caller.
  * Destructively modifies dash_Wp_option as it goes.
  * Returns 0 on success, nonzero for error (out of memory).
  */
-static int copy_extra_args(char **dest_argv, char *dash_Wp_option,
-                           int extra_args) {
+static int
+copy_extra_args(char **dest_argv, char *dash_Wp_option, int extra_args) {
     int i = 0;
     char *comma = dash_Wp_option + strlen("-Wp");
     while (comma != NULL) {
         char *opt = comma + 1;
         comma = strchr(opt, ',');
-        if (comma) *comma = '\0';
+        if (comma)
+            *comma = '\0';
         dest_argv[i] = strdup(opt);
-        if (!dest_argv[i]) return EXIT_OUT_OF_MEMORY;
+        if (!dest_argv[i])
+            return EXIT_OUT_OF_MEMORY;
         i++;
         if (strcmp(opt, "-MD") == 0 || strcmp(opt, "-MMD") == 0) {
             char *filename;
@@ -147,12 +173,15 @@ static int copy_extra_args(char **dest_argv, char *dash_Wp_option,
             }
             filename = comma + 1;
             comma = strchr(filename, ',');
-            if (comma) *comma = '\0';
+            if (comma)
+                *comma = '\0';
             dest_argv[i] = strdup("-MF");
-            if (!dest_argv[i]) return EXIT_OUT_OF_MEMORY;
+            if (!dest_argv[i])
+                return EXIT_OUT_OF_MEMORY;
             i++;
             dest_argv[i] = strdup(filename);
-            if (!dest_argv[i]) return EXIT_OUT_OF_MEMORY;
+            if (!dest_argv[i])
+                return EXIT_OUT_OF_MEMORY;
             i++;
         }
     }
@@ -161,7 +190,7 @@ static int copy_extra_args(char **dest_argv, char *dash_Wp_option,
 }
 
 
-int argv_append(char **argv, char *toadd)
+int argv_append(char *argv[], char *toadd)
 {
     int l = argv_len(argv);
     argv[l] = toadd;
@@ -201,8 +230,9 @@ int scan_args(char *argv[], char **input_file, char **output_file, char ***ret_n
     char *a;
     int ret;
 
-     /* allow for -o foo.o */
-    if ((ret = copy_argv(argv, ret_newargv, 2)) != 0)
+    /* allow for -o foo.o */
+    ret = copy_argv(argv, ret_newargv, 2);
+    if (ret != 0)
         return ret;
     argv = *ret_newargv;
 
@@ -212,7 +242,8 @@ int scan_args(char *argv[], char **input_file, char **output_file, char ***ret_n
 
     /* Things like "mrcc -c hello.c" with an implied compiler are
      * handled earlier on by inserting a compiler name.  At this
-     * point, argv[0] should always be a compiler name. */
+     * point, argv[0] should always be a compiler name.
+     */
     if (argv[0][0] == '-') {
         rs_log_error("unrecognized mrcc option: %s", argv[0]);
         exit(EXIT_BAD_ARGUMENTS);
@@ -302,7 +333,7 @@ int scan_args(char *argv[], char **input_file, char **output_file, char ***ret_n
                 }
                 *input_file = a;
             } else if (str_endswith(".o", a)) {
-              GOT_OUTPUT:
+GOT_OUTPUT:
                 rs_trace("found object/output file \"%s\"", a);
                 if (*output_file) {
                     rs_log_info("called for link?  i give up");
@@ -387,7 +418,7 @@ int scan_args(char *argv[], char **input_file, char **output_file, char ***ret_n
 int expand_preprocessor_options(char ***argv_ptr)
 {
     int i, j, ret;
-    char **argv = *argv_ptr;
+    char **argv= *argv_ptr;
     char **new_argv;
     int argc = argv_len(argv);
     for (i = 0; argv[i]; i++) {
@@ -403,11 +434,13 @@ int expand_preprocessor_options(char ***argv_ptr)
             for (j = 0; j < i; j++) {
                 new_argv[j] = argv[j];
             }
-            if ((ret = copy_extra_args(new_argv + i, argv[i],
-                                       extra_args)) != 0) {
+
+            ret = copy_extra_args(new_argv + i, argv[i],extra_args) ;
+            if (ret) {
                 free(new_argv);
                 return ret;
             }
+
             for (j = i + 1; j <= argc; j++) {
                 new_argv[j + extra_args - 1] = argv[j];
             }
@@ -418,9 +451,11 @@ int expand_preprocessor_options(char ***argv_ptr)
     return 0;
 }
 
-/* Free a malloc'd argv structure.  Only safe when the array and all its
- * components were malloc'd. */
-void free_argv(char **argv)
+/**
+ * Free a malloc'd argv structure.
+ * Only safe when the array and all its components were malloc'd.
+*/
+void free_argv(char *argv[])
 {
     char **a;
 
@@ -436,7 +471,7 @@ void free_argv(char **argv)
  * to stdout, which is the default when no -o option is specified.
  *
  * Structurally similar to strip_local_args()
- **/
+ */
 int strip_dasho(char **from, char ***out_argv)
 {
     char **to;
@@ -454,15 +489,14 @@ int strip_dasho(char **from, char ***out_argv)
     /* skip through argv, copying all arguments but skipping ones that
      * ought to be omitted */
     for (from_i = to_i = 0; from[from_i]; ) {
-        if (!strcmp(from[from_i], "-o")) {
+        char* f = from[from_i];
+        if (!strcmp(f, "-o")) {
             /* skip "-o  FILE" */
             from_i += 2;
-        }
-        else if (str_startswith("-o", from[from_i])) {
+        } else if (str_startswith("-o", f)) {
             /* skip "-oFILE" */
             from_i++;
-        }
-        else {
+        } else {
             to[to_i++] = from[from_i++];
         }
     }
@@ -507,7 +541,8 @@ int strip_local_args(char **from, char ***out_argv)
     int from_len;
 
     from_len = argv_len(from);
-    *out_argv = to = malloc((from_len + 1) * sizeof (char *));
+    to = malloc((from_len + 1) * sizeof (char *));
+    *out_argv = to;
 
     if (!to) {
         rs_log_error("failed to allocate space for arguments");
@@ -517,51 +552,50 @@ int strip_local_args(char **from, char ***out_argv)
     /* skip through argv, copying all arguments but skipping ones that
      * ought to be omitted */
     for (from_i = to_i = 0; from[from_i]; from_i++) {
-        if (str_equal("-D", from[from_i])
-            || str_equal("-I", from[from_i])
-            || str_equal("-U", from[from_i])
-            || str_equal("-L", from[from_i])
-            || str_equal("-l", from[from_i])
-            || str_equal("-MF", from[from_i])
-            || str_equal("-MT", from[from_i])
-            || str_equal("-MQ", from[from_i])
-            || str_equal("-include", from[from_i])
-            || str_equal("-imacros", from[from_i])
-            || str_equal("-iprefix", from[from_i])
-            || str_equal("-iwithprefix", from[from_i])
-            || str_equal("-isystem", from[from_i])
-            || str_equal("-iwithprefixbefore", from[from_i])
-            || str_equal("-idirafter", from[from_i])) {
+        char* f = from[from_i];
+        if (str_equal("-D", f)
+                || str_equal("-I", f)
+                || str_equal("-U", f)
+                || str_equal("-L", f)
+                || str_equal("-l", f)
+                || str_equal("-MF", f)
+                || str_equal("-MT", f)
+                || str_equal("-MQ", f)
+                || str_equal("-include", f)
+                || str_equal("-imacros", f)
+                || str_equal("-iprefix", f)
+                || str_equal("-iwithprefix", f)
+                || str_equal("-isystem", f)
+                || str_equal("-iwithprefixbefore", f)
+                || str_equal("-idirafter", f)) {
             /* skip next word, being option argument */
             if (from[from_i+1])
                 from_i++;
-        }
-        else if (str_startswith("-Wp,", from[from_i])
-                 || str_startswith("-Wl,", from[from_i])
-                 || str_startswith("-D", from[from_i])
-                 || str_startswith("-U", from[from_i])
-                 || str_startswith("-I", from[from_i])
-                 || str_startswith("-l", from[from_i])
-                 || str_startswith("-L", from[from_i])
-                 || str_startswith("-MF", from[from_i])
-                 || str_startswith("-MT", from[from_i])
-                 || str_startswith("-MQ", from[from_i])) {
+        } else if (str_startswith("-Wp,", f)
+                 || str_startswith("-Wl,", f)
+                 || str_startswith("-D", f)
+                 || str_startswith("-U", f)
+                 || str_startswith("-I", f)
+                 || str_startswith("-l", f)
+                 || str_startswith("-L", f)
+                 || str_startswith("-MF", f)
+                 || str_startswith("-MT", f)
+                 || str_startswith("-MQ", f)) {
             /* Something like "-DNDEBUG" or
              * "-Wp,-MD,.deps/nsinstall.pp".  Just skip this word */
             ;
-        }
-        else if (str_equal("-undef", from[from_i])
-                 || str_equal("-nostdinc", from[from_i])
-                 || str_equal("-nostdinc++", from[from_i])
-                 || str_equal("-MD", from[from_i])
-                 || str_equal("-MMD", from[from_i])
-                 || str_equal("-MG", from[from_i])
-                 || str_equal("-MP", from[from_i])) {
+        } else if (str_equal("-undef", f)
+                 || str_equal("-nostdinc", f)
+                 || str_equal("-nostdinc++", f)
+                 || str_equal("-MD", f)
+                 || str_equal("-MMD", f)
+                 || str_equal("-MG", f)
+                 || str_equal("-MP", f)) {
             /* Options that only affect cpp; skip */
             ;
         }
         else {
-            to[to_i++] = from[from_i];
+            to[to_i++] = f;
         }
     }
 
@@ -580,17 +614,16 @@ int strip_local_args(char **from, char ***out_argv)
  * @note The result is not necessarily properly quoted for passing to
  * shells.
  *
- * @return newly-allocated string containing representation of
- * arguments.
+ * @return newly-allocated string containing representation of arguments.
  **/
-char *argv_tostr(char **a)
+char *argv_tostr(char *argv[])
 {
     int l, i;
     char *s, *ss;
 
     /* calculate total length */
-    for (l = 0, i = 0; a[i]; i++) {
-        l += strlen(a[i]) + 3;  /* two quotes and space */
+    for (l = 0, i = 0; argv[i]; i++) {
+        l += strlen(argv[i]) + 3;  /* two quotes and space */
     }
 
     ss = s = malloc((size_t) l + 1);
@@ -599,17 +632,17 @@ char *argv_tostr(char **a)
         exit(EXIT_OUT_OF_MEMORY);
     }
 
-    for (i = 0; a[i]; i++) {
+    for (i = 0; argv[i]; i++) {
         /* kind of half-assed quoting; won't handle strings containing
          * quotes properly, but good enough for debug messages for the
          * moment. */
-        int needs_quotes = (strpbrk(a[i], " \t\n\"\';") != NULL);
+        int needs_quotes = (strpbrk(argv[i], " \t\n\"\';") != NULL);
         if (i)
             *ss++ = ' ';
         if (needs_quotes)
             *ss++ = '"';
-        strcpy(ss, a[i]);
-        ss += strlen(a[i]);
+        strcpy(ss, argv[i]);
+        ss += strlen(argv[i]);
         if (needs_quotes)
             *ss++ = '"';
     }
@@ -647,5 +680,3 @@ int set_action_opt(char **a, const char *new_c)
         return 0;
     }
 }
-
-

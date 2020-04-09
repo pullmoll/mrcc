@@ -1,8 +1,6 @@
 // mrcc - A C Compiler system on MapReduce
 // Zhiqiang Ma, https://www.ericzma.com
-
-#ifndef _HEADER_EXEC_H
-# define _HEADER_EXEC_H
+#pragma once
 
 // include for struct host_def
 #include "utils.h"
@@ -21,6 +19,3 @@ int critique_status(int status,
                         const char *input_fname,
                         struct hostdef *host,
                         int verbose);
-
-
-#endif //_HEADER_EXEC_H

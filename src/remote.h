@@ -1,8 +1,6 @@
 // mrcc - A C Compiler system on MapReduce
 // Zhiqiang Ma, https://www.ericzma.com
-
-#ifndef _HEADER_REMOTE_H
-# define _HEADER_REMOTE_H
+#pragma once
 
 int compile_remote(char **argv,
                        char *input_fname,
@@ -18,9 +16,9 @@ int compile_remote(char **argv,
 
 int put_cpp_fs(char* cpp_fname);
 int put_config_fs(char** argv,
-        char* input_fname,
-        char* cpp_fname,
-        char* output_fname);
+        const char* input_fname,
+        const char* cpp_fname,
+        const char* output_fname);
 
 /* we cleanup them at atexit
 //int clean_up_config_fs(char* cpp_fname);
@@ -28,6 +26,4 @@ int put_config_fs(char** argv,
 //int clean_up_file_fs(char* local_fname);
 //int clean_up_outdir_fs(char* cpp_fname);
 */
-
-#endif //_HEADER_REMOTE_H
 

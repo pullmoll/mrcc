@@ -49,11 +49,12 @@ int recursion_safeguard(void)
 
     if (env) {
         rs_trace("safeguard: %s", env);
-        if (!(safeguard_level = atoi(env)))
+        safeguard_level = atoi(env);
+        if (!safeguard_level)
             safeguard_level = 1;
-    }
-    else
+    } else {
         safeguard_level = 0;
+    }
     rs_trace("safeguard level=%d", safeguard_level);
 
     return safeguard_level;
@@ -63,11 +64,13 @@ int recursion_safeguard(void)
 int increment_safeguard(void)
 {
     static char safeguard_set[] = "MRCC_SAFEGUARD=1";
+    int ret;
 
     if (safeguard_level > 0)
-    safeguard_set[sizeof safeguard_set-2] = safeguard_level+'1';
+        safeguard_set[sizeof safeguard_set-2] = safeguard_level+'1';
     rs_trace("setting safeguard: %s", safeguard_set);
-    if ((putenv(strdup(safeguard_set)) == -1)) {
+    ret = putenv(strdup(safeguard_set));
+    if (ret == -1) {
         rs_log_error("putenv failed");
         /* and continue */
     }

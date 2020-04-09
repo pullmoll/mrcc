@@ -30,6 +30,7 @@
 #include "netfsutils.h"
 
 /**************************************/
+
 /**
  * A list of files that need to be cleaned up on exit.
  *
@@ -40,7 +41,7 @@ volatile int cleanups_size = 0; /* The length of the array. */
 volatile int n_cleanups = 0;    /* The number of entries used. */
 
 
-/*
+/**
  * You can call this at any time, or hook it into atexit().  It is
  * safe to call repeatedly.
  *
@@ -58,8 +59,8 @@ volatile int n_cleanups = 0;    /* The number of entries used. */
  * to remove them from the list, otherwise it will eventually overflow
  * in prefork mode.
  */
-
-static void cleanup_tempfiles_inner(int from_signal_handler)
+static void
+cleanup_tempfiles_inner(int from_signal_handler)
 {
     int i;
     int done = 0;
@@ -75,8 +76,8 @@ static void cleanup_tempfiles_inner(int from_signal_handler)
         if (save) {
             rs_trace("skip cleanup of %s", cleanups[i]);
         } else {
-        
-        /* Test whether the file is on net fs by test whether the 
+
+        /* Test whether the file is on net fs by test whether the
          * first char if '#', else it is a file local:
          * Try removing it as a directory first, and
          * if that fails, try removing is as a file.
@@ -119,7 +120,8 @@ static void cleanup_tempfiles_inner(int from_signal_handler)
  * Add to the list of files to delete on exit.
  * If it runs out of memory, it returns non-zero.
  */
-int add_cleanup(const char *filename)
+int
+add_cleanup(const char *filename)
 {
     char *new_filename;
     int new_n_cleanups = n_cleanups + 1;
@@ -167,4 +169,3 @@ void cleanup_tempfiles(void)
 {
     cleanup_tempfiles_inner(0);
 }
-

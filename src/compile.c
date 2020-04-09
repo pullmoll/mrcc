@@ -92,7 +92,7 @@ int cpp_maybe(char **argv, char *input_fname, char **cpp_fname,
 {
     char **cpp_argv;
     int ret;
-    char *input_exten;
+    const char *input_exten;
     const char *output_exten;
 
     *cpp_pid = 0;
@@ -103,7 +103,8 @@ int cpp_maybe(char **argv, char *input_fname, char **cpp_fname,
         rs_trace("input is already preprocessed");
 
         /* already preprocessed, great. */
-        if (!(*cpp_fname = strdup(input_fname))) {
+        *cpp_fname = strdup(input_fname);
+        if (!*cpp_fname) {
             rs_log_error("couldn't duplicate string");
             return EXIT_OUT_OF_MEMORY;
         }
@@ -112,7 +113,8 @@ int cpp_maybe(char **argv, char *input_fname, char **cpp_fname,
 
     input_exten = find_extension(input_fname);
     output_exten = preproc_exten(input_exten);
-    if ((ret = make_tmpnam("mrcc", output_exten, cpp_fname)))
+    ret = make_tmpnam("mrcc", output_exten, cpp_fname);
+    if (ret)
         return ret;
 
     /* We strip the -o option and allow cpp to write to stdout, which is
@@ -126,21 +128,16 @@ int cpp_maybe(char **argv, char *input_fname, char **cpp_fname,
      * and objects in different directories, and who don't specify -MF.  They
      * can fix it by specifying -MF.  */
 
-    if ((ret = strip_dasho(argv, &cpp_argv))
-        || (ret = set_action_opt(cpp_argv, "-E")))
+    ret = strip_dasho(argv, &cpp_argv);
+    if (ret = 0)
+        ret = set_action_opt(cpp_argv, "-E");
+    if (ret)
         return ret;
 
     /* FIXME: cpp_argv is leaked */
 
-    return spawn_child(cpp_argv, cpp_pid,
-                           "/dev/null", *cpp_fname, NULL);
+    return spawn_child(cpp_argv, cpp_pid, "/dev/null", *cpp_fname, NULL);
 }
-
-
-
-
-
-
 
 /**
  * Invoke a compiler locally.  This is, obviously, the alternative to
@@ -169,14 +166,15 @@ static int compile_local(char *argv[], char *input_name)
 
     /* We don't do any redirection of file descriptors when running locally,
      * so if for example cpp is being used in a pipeline we should be fine. */
-    if ((ret = spawn_child(argv, &pid, NULL, NULL, NULL)) != 0)
+    ret = spawn_child(argv, &pid, NULL, NULL, NULL);
+    if (ret)
         return ret;
 
-    if ((ret = collect_child("cc", pid, &status, timeout_null_fd)))
+    ret = collect_child("cc", pid, &status, timeout_null_fd);
+    if (ret)
         return ret;
 
-    return critique_status(status, "compile", input_name,
-                               hostdef_local, 1);
+    return critique_status(status, "compile", input_name, hostdef_local, 1);
 }
 
 
@@ -248,10 +246,12 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
     char *_discrepancy_filename = NULL;
     char **new_argv;
 
-    if ((ret = expand_preprocessor_options(&argv)) != 0)
+    ret = expand_preprocessor_options(&argv);
+    if (ret)
         goto clean_up;
 
-    if ((ret = discrepancy_filename(&_discrepancy_filename)))
+    ret = discrepancy_filename(&_discrepancy_filename);
+    if (ret)
         goto clean_up;
 
     if (sg_level) /* Recursive mrcc - run locally, and skip all locking. */
@@ -264,14 +264,14 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
     ret = scan_args(argv, &input_fname, &output_fname, &new_argv);
     free_argv(argv);
     argv = new_argv;
-    if (ret != 0) {
+    if (ret) {
         /* we need to scan the arguments even if we already know it's
          * local, so that we can pick up mrcc client options. */
         goto lock_local;
     }
 
-    if ((ret = make_tmpnam("mrcc_server_stderr", ".txt",
-                               &server_stderr_fname))) {
+    ret = make_tmpnam("mrcc_server_stderr", ".txt", &server_stderr_fname);
+    if (ret) {
         /* So we are failing locally to make a temp file to store the
          * server-side errors in; it's unlikely anything else will
          * work, but let's try the compilation locally.
@@ -280,11 +280,12 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
     }
 
     // begin to compile on MapReduce now
-    
+
     /* Lock the local CPU, since we're going to be doing preprocessing
      * or include scanning. */
     /*
-    if ((ret = lock_local_cpp(&local_cpu_lock_fd)) != 0) {
+    ret = lock_local_cpp(&local_cpu_lock_fd);
+    if (ret) {
         goto fallback;
     }
     */
@@ -297,22 +298,25 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
     if (1) {
         files = NULL;
 
-        if ((ret = cpp_maybe(argv, input_fname, &cpp_fname, &cpp_pid) != 0))
+        ret = cpp_maybe(argv, input_fname, &cpp_fname, &cpp_pid);
+        if (ret)
             goto fallback;
 
-        if ((ret = strip_local_args(argv, &server_side_argv)))
+        ret = strip_local_args(argv, &server_side_argv);
+        if (ret)
             goto fallback;
     }
 
-    if ((ret = compile_remote(server_side_argv,
-                                  input_fname,
-                                  cpp_fname,
-                                  files,
-                                  output_fname,
-                                  needs_dotd ? deps_fname : NULL,
-                                  server_stderr_fname,
-                                  cpp_pid, local_cpu_lock_fd,
-                                  host, status)) != 0) {
+    ret = compile_remote(server_side_argv,
+                          input_fname,
+                          cpp_fname,
+                          files,
+                          output_fname,
+                          needs_dotd ? deps_fname : NULL,
+                          server_stderr_fname,
+                          cpp_pid, local_cpu_lock_fd,
+                          host, status);
+    if (ret) {
         /* Returns zero if we successfully ran the compiler, even if
          * the compiler itself bombed out. */
 
@@ -339,7 +343,8 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
          * operation will work, and this makes the mistake of
          * blaming the server for what is (clearly?) a local failure.
          */
-        if ((copy_file_to_fd(server_stderr_fname, STDERR_FILENO))) {
+        ret = copy_file_to_fd(server_stderr_fname, STDERR_FILENO);
+        if (ret) {
             rs_log_warning("Could not show server-side errors");
             goto fallback;
         }
@@ -365,7 +370,7 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
         goto fallback;
     }
 
-  fallback:
+fallback:
 
     if (cpu_lock_fd != -1) {
         // mrcc_unlock(cpu_lock_fd);
@@ -382,7 +387,8 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
          * If we fail the user will miss all the messages from the server; so
          * we pretend we failed remotely.
          */
-        if ((copy_file_to_fd(server_stderr_fname, STDERR_FILENO))) {
+        ret = copy_file_to_fd(server_stderr_fname, STDERR_FILENO);
+        if (ret) {
                     rs_log_error("Could not print error messages from '%s'",
                        server_stderr_fname);
         }
@@ -393,10 +399,10 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
 
     rs_log_warning("failed to distribute, running locally instead");
 
-  lock_local:
+lock_local:
     // lock_local(&cpu_lock_fd);
 
-  run_local:
+run_local:
     /* Either compile locally, after remote failure, or simply do other cc tasks
        as assembling, linking, etc. */
     ret = compile_local(argv, input_fname);
@@ -413,7 +419,7 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
             discrepancy_filename);
     }
     */
-  unlock_and_clean_up:
+unlock_and_clean_up:
     if (cpu_lock_fd != -1) {
         // mrcc_unlock(cpu_lock_fd);
         cpu_lock_fd = -1; /* Not really needed, just for consistency. */
@@ -424,7 +430,7 @@ static int build_somewhere(char *argv[], int sg_level, int *status)
         local_cpu_lock_fd = -1; /* Not really needed, just for consistency. */
     }
 
-  clean_up:
+clean_up:
     free_argv(argv);
     if (server_side_argv_deep_copied) {
         if (server_side_argv != NULL) {
@@ -482,8 +488,8 @@ int discrepancy_filename(char **filename)
     *filename = NULL;
     if (include_server_port == NULL) {
         return 0;
-    } else if (str_endswith(include_server_port_suffix,
-                            include_server_port)) {
+    }
+    if (str_endswith(include_server_port_suffix, include_server_port)) {
         /* We're going to make a longer string from include_server_port: one
          * that replaces include_server_port_suffix with discrepancy_suffix. */
         int delta = strlen(discrepancy_suffix) -
@@ -501,9 +507,8 @@ int discrepancy_filename(char **filename)
          * we expect to find a '/' at slash_pos in filename. */
         assert((*filename)[slash_pos] == '/');
         (void) strcpy(*filename + slash_pos, discrepancy_suffix);
-        return 0;
-    } else
-        return 0;
+    }
+    return 0;
 }
 
 

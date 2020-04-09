@@ -1,8 +1,6 @@
 // mrcc - A C Compiler system on MapReduce
 // Zhiqiang Ma, https://www.ericzma.com
-
-#ifndef _HEADER_UTILS_H
-# define _HEADER_UTILS_H
+#pragma once
 
 /**
  * Common exit codes.
@@ -111,5 +109,3 @@ void ignore_sighup(void);
 int ignore_sigpipe(int val);
 
 void client_catch_signals(void);
-
-#endif //_HEADER_UTILS_H

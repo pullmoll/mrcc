@@ -1,6 +1,4 @@
-#ifndef _HEADER_TRACE_H
-#  define _HEADER_TRACE_H
-
+#pragma once
 
 /**
  * @file
@@ -71,8 +69,7 @@ enum {
     RS_LOG_PRIMASK       = 7,   /**< Mask to extract priority
                                    part. \internal */
 
-    RS_LOG_NONAME        = 8,   /**< \b Don't show function name in
-                                   message. */
+    RS_LOG_NONAME        = 8,   /**< \b Don't show function name in message. */
 
     RS_LOG_NO_PROGRAM   = 16,
     RS_LOG_NO_PID       = 32
@@ -90,11 +87,14 @@ void note_info_time(char* info);
 /**
  * \typedef rs_logger_fn
  * \brief Callback to write out log messages.
- * \param level a syslog level.
+ * \param flags a syslog level.
+ * \param fn function name of caller.
  * \param msg message to be logged.
+ * \param pr
  *
- * \param private Opaque data passed in when logger was added.  For
- * example, pointer to file descriptor.
+ * \param private_ptr Opaque data passed in when logger was added.
+ *                    For example, pointer to file descriptor.
+ * \param private_int Integer value passed in when logger was added.
  */
 typedef void rs_logger_fn(int flags, const char *fn,
                               char const *msg, va_list,
@@ -233,20 +233,22 @@ struct rs_logger_list {
 #  warning size_t is larger than a long integer, values in trace messages may be wrong
 #endif
 
+#ifndef MR_UNUSED
+#define MRCC_UNUSED(x) (void)x
+#endif
+
 
 /* A macro so that we get the right __FUNCTION__ in the trace message.
  *
  * We condition on rs_trace_enabled so that we don't do the to-string
  * conversion unless the user will actually see the result, because it's a
  * little expensive.  */
-#define trace_argv(_message, _argv)         \
+#define trace_argv(_message, _argv) do {        \
     if (rs_trace_enabled()) {                   \
         char *_astr;                            \
-        _astr = argv_tostr(_argv);          \
+        _astr = argv_tostr(_argv);              \
         rs_trace("%s: %s", _message, _astr);    \
         free(_astr);                            \
-    } else {}
-
-
-#endif //_HEADER_TRACE_H
+    }                                           \
+} while (0)
 

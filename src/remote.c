@@ -37,10 +37,15 @@
 #include "mrutils.h"
 #include "compile.h"
 
-
-static int wait_for_cpp(pid_t cpp_pid,
-                            int *status,
-                            const char *input_fname)
+/**
+ * @brief Wait for cpp to finish (if not already done), check the result, then send the .i file.
+ * @param cpp_pid pid of the C preprocessor.
+ * @param status pointer to an int to receive the status.
+ * @param input_fname input filename (C source)
+ * @return 0 on success, or error return code.
+ */
+static int
+wait_for_cpp(pid_t cpp_pid, int *status, const char *input_fname)
 {
     int ret;
 
@@ -49,31 +54,36 @@ static int wait_for_cpp(pid_t cpp_pid,
         /* Wait for cpp to finish (if not already done), check the
          * result, then send the .i file */
 
-        if ((ret = collect_child("cpp", cpp_pid, status, timeout_null_fd)))
+        ret = collect_child("cpp", cpp_pid, status, timeout_null_fd);
+        if (ret)
             return ret;
 
         /* Although cpp failed, there is no need to try running the command
          * locally, because we'd presumably get the same result.  Therefore
          * critique the command and log a message and return an indication
          * that compilation is complete. */
-        if (critique_status(*status, "cpp", input_fname, hostdef_local, 0))
+        ret = critique_status(*status, "cpp", input_fname, hostdef_local, 0);
+        if (ret)
             return 0;
     }
     return 0;
 }
 
-/*
- * put cpp file to net filesystem
- * return 0 if success
+/**
+ * @brief Put a preprocessed file on the filesystem.
+ * @param cpp_fname
+ * @return 0 on success,
  */
 int put_cpp_fs(char* cpp_fname)
 {
     int ret;
     char *out = NULL;
-    if ((out = name_local_to_fs(cpp_fname)) == NULL) {
+    out = name_local_to_fs(cpp_fname);
+    if (out == NULL) {
         return EXIT_OUT_OF_MEMORY;
     }
-    if (put_file_fs(cpp_fname, out) != 0) {
+    ret = put_file_fs(cpp_fname, out);
+    if (ret != 0) {
         ret = EXIT_PUT_CPP_FS_FAILED;
     }
     free(out);
@@ -85,17 +95,19 @@ int put_cpp_fs(char* cpp_fname)
  * return 0 if success
  */
 // this function is no use by now, always return 0
-int put_config_fs(char** argv,
-        char* input_fname,
-        char* cpp_fname,
-        char* output_fname)
+int put_config_fs(char** argv, const char* input_fname, const char* cpp_fname, const char* output_fname)
 {
     int ret = 0;
+
+    (void)argv;
+    (void)input_fname;
+    (void)cpp_fname;
+    (void)output_fname;
 
     return ret;
 }
 
-/* clean up temp files on net fs when failure occure
+/* clean up temp files on net fs when failure occured
  */
 // this function is no use by now, always return 0
 /*
@@ -145,7 +157,7 @@ int clean_up_dir_fs(char* local_fname)
  * to overlap with the preprocessing.
  *
  * @param argv Compiler command to run
- * 
+ *
  * @param cpp_fname Filename of preprocessed source.  May not be complete yet,
  * depending on @p cpp_pid.
  *
@@ -159,9 +171,8 @@ int clean_up_dir_fs(char* local_fname)
  * If != -1, the lock must be held on entry to this function,
  * and THIS FUNCTION WILL RELEASE THE LOCK.
  *
- * Returns 0 on success, otherwise error.
+ * @return 0 on success, otherwise error.
  */
-
 static int put_cpp_config_fs(char** argv,
                        char* input_fname,
                        char* cpp_fname,
@@ -172,32 +183,36 @@ static int put_cpp_config_fs(char** argv,
                        int* status)
 {
     int ret = 0;
- 
-    if ((ret = wait_for_cpp(cpp_pid, status, input_fname)))
+
+    ret = wait_for_cpp(cpp_pid, status, input_fname);
+    if (ret)
         goto out;
 
-    /* We are done with local preprocessing.  Unlock to allow someone
-     * else to start preprocessing. */
+    /* We are done with local preprocessing.
+     * Unlock to allow someone else to start preprocessing.
+     */
     if (local_cpu_lock_fd != -1) {
         //mrcc_unlock(local_cpu_lock_fd);
         local_cpu_lock_fd = -1;
     }
     if (*status != 0)
         goto out;
-   
-    if ((ret = put_cpp_fs(cpp_fname)) != 0) {
+
+    ret = put_cpp_fs(cpp_fname);
+    if (ret != 0) {
         rs_log_error("put cpp file \"%s\" to net fs failed", cpp_fname);
         goto out;
     }
 
     rs_trace("master finished sending cpp to net fs");
 
-    /* no use now
-    if ((ret = put_config_fs(argv, input_fname, cpp_fname, output_fname)) != 0) {
+#if 0   /* no use now */
+    ret = put_config_fs(argv, input_fname, cpp_fname, output_fname);
+    if (ret != 0) {
         rs_log_error("put config file for \"%s\" to net fs failed", cpp_fname);
         goto out;
     }
-    */
+#endif
 
     return ret;
 
@@ -206,18 +221,18 @@ out:
         // mrcc_unlock(local_cpu_lock_fd);
         local_cpu_lock_fd = -1; /* Not really needed; just for consistency. */
     }
-    /* we cleanup them at atexit
+    /* we cleanup them at atexit */
+#if 0
     // cleanup temp files on net fs
     if (ret == EXIT_PUT_CONFIG_FS_FAILED) {
         rs_log_info("clean up config & cpp file for \"%s\" on net fs", cpp_fname);
         clean_up_config_fs(cpp_fname);
         clean_up_file_fs(cpp_fname);
-    }
-    else if (ret == EXIT_PUT_CPP_FS_FAILED) {
+    } else if (ret == EXIT_PUT_CPP_FS_FAILED) {
         rs_log_info("clean up cpp file  \"%s\" on net fs", cpp_fname);
         clean_up_file_fs(cpp_fname);
     }
-    */
+#endif
 
     return ret;
 }
@@ -229,7 +244,7 @@ out:
  * source and object is replaced for the remote compilation
  * MapReduce will control the running of the job
  */
-static int call_mapper(char** argv, char* input_fname, char* cpp_fname, char* output_fname) 
+static int call_mapper(char** argv, char* input_fname, char* cpp_fname, char* output_fname)
 {
     int ret = EXIT_CALL_MAPPER_FAILED;
     char** new_argv = NULL;
@@ -241,7 +256,8 @@ static int call_mapper(char** argv, char* input_fname, char* cpp_fname, char* ou
     if (copy_argv(argv, &new_argv, 0) != 0) {
         return EXIT_OUT_OF_MEMORY;
     }
-    if ((new_output_fname = name_local_cpp_to_local_outfile(cpp_fname)) == NULL) {
+    new_output_fname = name_local_cpp_to_local_outfile(cpp_fname);
+    if (new_output_fname == NULL) {
         return EXIT_OUT_OF_MEMORY;
     }
 
@@ -257,7 +273,8 @@ static int call_mapper(char** argv, char* input_fname, char* cpp_fname, char* ou
         }
     }
 
-    if ((str_argv = argv_tostr(new_argv)) == NULL) {
+    str_argv = argv_tostr(new_argv);
+    if (str_argv == NULL) {
         return EXIT_OUT_OF_MEMORY;
     }
     free_argv(new_argv);
@@ -266,7 +283,7 @@ static int call_mapper(char** argv, char* input_fname, char* cpp_fname, char* ou
 
     free(str_argv);
     free(new_output_fname);
-    
+
     return ret;
 }
 
@@ -275,17 +292,22 @@ static int call_mapper(char** argv, char* input_fname, char* cpp_fname, char* ou
  * get the output file from network and put it to the right place
  * and do the net fs cleanup works at the same time
  */
-static int get_result_fs(char* cpp_fname, char* output_fname) 
+static int get_result_fs(char* cpp_fname, char* output_fname)
 {
     int ret;
     char* out_fname = NULL;
     char* fsname = NULL;
-    if ((out_fname = name_local_cpp_to_local_outfile(cpp_fname)) == NULL) {
+
+    out_fname = name_local_cpp_to_local_outfile(cpp_fname);
+    if (out_fname == NULL) {
         return EXIT_OUT_OF_MEMORY;
     }
-    if ((fsname = name_local_to_fs(out_fname)) == NULL) {
+
+    fsname = name_local_to_fs(out_fname);
+    if (fsname == NULL) {
         return EXIT_OUT_OF_MEMORY;
     }
+
     free(out_fname);
     out_fname = NULL;
     // get output file from net fs
@@ -296,7 +318,8 @@ static int get_result_fs(char* cpp_fname, char* output_fname)
     free(fsname);
     fsname = NULL;
 
-    /* we cleanup them at atexit
+    /* we cleanup them at atexit */
+#if 0
     // clean up config files, no use by now
     ret = clean_up_config_fs(cpp_fname) || ret;
     // clean up out file
@@ -307,11 +330,12 @@ static int get_result_fs(char* cpp_fname, char* output_fname)
     ret = clean_up_file_fs(cpp_fname) || ret;
     // clean up output dir
     ret = clean_up_outdir_fs(cpp_fname) || ret;
-    */
+#endif
 
     return 0;
 }
-/*
+
+#if 0
 int clean_up_outdir_fs(char* cpp_fname)
 {
     int ret = 0;
@@ -324,7 +348,8 @@ int clean_up_outdir_fs(char* cpp_fname)
 
     return ret;
 }
-*/
+#endif
+
 /**
  * Pass a compilation across the network.
  *
@@ -384,13 +409,13 @@ int compile_remote(char **argv,
 
     note_execution(host, argv);
     // note_state(PHASE_CONNECT, input_fname, host->hostname);
-    
+
     // copy the preprocessed file to network and put the configuration files
     // when we wait for the cpp to finish if it has not finished
     note_info_time("begin put_cpp_config_fs");
     if (put_cpp_config_fs(argv, input_fname, cpp_fname, output_fname,
             cpp_pid, local_cpu_lock_fd, host, status) != 0) {
-        rs_log_error("put_cpp_config_fs failed!"); 
+        rs_log_error("put_cpp_config_fs failed!");
         ret = -1;
         goto out;
     }
@@ -403,7 +428,7 @@ int compile_remote(char **argv,
         goto out;
     }
     note_info_time("finish call_mapper");
- 
+
     // get the output file from network and put it to the right place
     // and do the net fs cleanup works at the same time
     note_info_time("begin get_result_fs");

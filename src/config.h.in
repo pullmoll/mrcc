@@ -1,0 +1,25 @@
+/* The configured options and settings for mrcc */
+#pragma once
+
+#cmakedefine HAVE_STDARG_H
+#cmakedefine HAVE_STDIO_H
+#cmakedefine HAVE_STRING_H
+#cmakedefine HAVE_TIME_H
+#cmakedefine HAVE_CTYPE_H
+#cmakedefine HAVE_ASSERT_H
+#cmakedefine HAVE_FCNTL_H
+#cmakedefine HAVE_SYS_FCNTL_H
+#cmakedefine HAVE_ERRNO_H
+#cmakedefine HAVE_SYS_TYPES_H
+#cmakedefine HAVE_SYS_TIME_H
+#cmakedefine HAVE_SYS_STAT_H
+#cmakedefine HAVE_UNISTD_H
+#cmakedefine HAVE_SIGNAL_H
+#cmakedefine HAVE_SYS_RESOURCE_H
+#cmakedefine HAVE_SYS_WAIT_H
+#cmakedefine HAVE_SYS_POLL_H
+
+#define MRCC_VERSION_MAJOR @mrcc_VERSION_MAJOR@
+#define MRCC_VERSION_MINOR @mrcc_VERSION_MINOR@
+#define MRCC_VERSION_PATCH @mrcc_VERSION_PATCH@
+#define MRCC_VERSION "@mrcc_VERSION_MAJOR@.@mrcc_VERSION_MINOR@.@mrcc_VERSION_PATCH@"

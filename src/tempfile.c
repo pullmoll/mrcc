@@ -51,7 +51,7 @@ int get_tmp_top(const char **p_ret)
 
 
 /**
- * Create a file inside the temporary directory and register it for
+ * Create a file inside the temporary directory, register it for
  * later cleanup, and return its name.
  *
  * The file will be reopened later, possibly in a child.  But we know
@@ -65,7 +65,8 @@ int make_tmpnam(const char *prefix, const char *suffix, char **name_ret)
     unsigned long random_bits;
     int fd;
 
-    if ((ret = get_tmp_top(&tempdir)))
+    ret = get_tmp_top(&tempdir);
+    if (ret)
         return ret;
 
     if (access(tempdir, W_OK|X_OK) == -1) {
@@ -89,18 +90,17 @@ int make_tmpnam(const char *prefix, const char *suffix, char **name_ret)
     do {
         free(s);
 
-        if (asprintf(&s, "%s/%s_%08lx%s",
-                     tempdir,
-                     prefix,
-                     random_bits & 0xffffffffUL,
-                     suffix) == -1)
+        ret = asprintf(&s, "%s/%s_%08lx%s", tempdir, prefix, random_bits & 0xffffffffUL, suffix);
+        if (ret == -1) {
             return EXIT_OUT_OF_MEMORY;
+        }
 
         /* Note that if the name already exists as a symlink, this
          * open call will fail.
          *
          * The permissions are tight because nobody but this process
-         * and our children should do anything with it. */
+         * and our children should do anything with it.
+         */
         fd = open(s, O_WRONLY | O_CREAT | O_EXCL, 0600);
         if (fd == -1) {
             /* try again */
@@ -117,7 +117,8 @@ int make_tmpnam(const char *prefix, const char *suffix, char **name_ret)
         break;
     } while (1);
 
-    if ((ret = add_cleanup(s))) {
+    ret = add_cleanup(s);
+    if (ret) {
         /* bailing out */
         unlink(s);
         free(s);
@@ -129,9 +130,11 @@ int make_tmpnam(const char *prefix, const char *suffix, char **name_ret)
 }
 
 /**
- * Return a static string holding MRCC_DIR, or ~/.mrcc.
+ * @brief Return a static string holding MRCC_DIR, or ~/.mrcc.
  * The directory is created if it does not exist.
- **/
+ * @param path_ret pointer to a string to receive the path.
+ * @return 0 on success, or error return code.
+ */
 int get_top_dir(char **path_ret)
 {
     char *env;
@@ -143,8 +146,10 @@ int get_top_dir(char **path_ret)
         return 0;
     }
 
-    if ((env = getenv("MRCC_DIR"))) {
-        if ((cached = strdup(env)) == NULL) {
+    env = getenv("MRCC_DIR");
+    if (env) {
+        cached = strdup(env);
+        if (cached == NULL) {
             return EXIT_OUT_OF_MEMORY;
         } else {
             *path_ret = cached;
@@ -152,7 +157,8 @@ int get_top_dir(char **path_ret)
         }
     }
 
-    if ((env = getenv("HOME")) == NULL) {
+    env = getenv("HOME");
+    if (env == NULL) {
         rs_log_warning("HOME is not set; can't find mrcc directory");
         return EXIT_BAD_ARGUMENTS;
     }
@@ -170,12 +176,17 @@ int get_top_dir(char **path_ret)
 
 
 /**
- * Create the directory @p path.  If it already exists as a directory
- * we succeed.
- **/
-int mrcc_mkdir(const char *path)
+ * @brief Create the directory @p path.
+ * If it already exists as a directory we succeed.
+ * @param path path name of directory to create.
+ * @return
+ */
+int
+mrcc_mkdir(const char *path)
 {
-    if ((mkdir(path, 0777) == -1) && (errno != EEXIST)) {
+    int ret;
+    ret = mkdir(path, 0777);
+    if (ret == -1 && errno != EEXIST) {
         rs_log_error("mkdir '%s' failed: %s", path, strerror(errno));
         return EXIT_IO_ERROR;
     }
@@ -184,18 +195,24 @@ int mrcc_mkdir(const char *path)
 }
 
 /**
- * Return a subdirectory of the MRCC_DIR of the given name, making
- * sure that the directory exists.
- **/
-int get_subdir(const char *name, char **dir_ret)
+ * @brief Return a subdirectory of the MRCC_DIR of the given name,
+ *        making sure that the directory exists.
+ * @param name name of the subdirectory.
+ * @param dir_ret pointer to a string to receive the canonical path.
+ * @return 0 on success, or error return code.
+ */
+int
+get_subdir(const char *name, char **dir_ret)
 {
     int ret;
     char *topdir;
 
-    if ((ret = get_top_dir(&topdir)))
+    ret = get_top_dir(&topdir);
+    if (ret)
         return ret;
 
-    if (asprintf(dir_ret, "%s/%s", topdir, name) == -1) {
+    ret = asprintf(dir_ret, "%s/%s", topdir, name);
+    if (ret == -1) {
         rs_log_error("asprintf failed");
         return EXIT_OUT_OF_MEMORY;
     }
@@ -212,12 +229,11 @@ int get_lock_dir(char **dir_ret)
     if (cached) {
         *dir_ret = cached;
         return 0;
-    } else {
-        ret = get_subdir("lock", dir_ret);
-        if (ret == 0)
-            cached = *dir_ret;
-        return ret;
     }
+    ret = get_subdir("lock", dir_ret);
+    if (ret == 0)
+        cached = *dir_ret;
+    return ret;
 }
 
 
@@ -229,12 +245,9 @@ int get_state_dir(char **dir_ret)
     if (cached) {
         *dir_ret = cached;
         return 0;
-    } else {
-        ret = get_subdir("state", dir_ret);
-        if (ret == 0)
-            cached = *dir_ret;
-        return ret;
     }
+    ret = get_subdir("state", dir_ret);
+    if (ret == 0)
+        cached = *dir_ret;
+    return ret;
 }
-
-

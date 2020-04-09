@@ -34,34 +34,35 @@ void set_trace_from_env(void)
     /* the email-an-error functionality in emaillog.c depends on this */
     rs_trace_set_level(RS_LOG_DEBUG);
 
-    if ((logfile = getenv("MRCC_LOG")) && logfile[0]) {
-        fd = open(logfile, O_WRONLY|O_APPEND|O_CREAT, 0666);
-        if (fd != -1) {
-            /* asked for a file, and we can open that file:
-               include info messages */
-            level = RS_LOG_INFO;
-        } else {
-            /* asked for a file, can't use it; use stderr instead */
-            fd = STDERR_FILENO;
-            save_errno = errno;
-            failed_to_open_logfile = 1;
-        }
+    logfile = getenv("MRCC_LOG");
+    if (logfile && logfile[0]) {
+	fd = open(logfile, O_WRONLY|O_APPEND|O_CREAT, 0666);
+	if (fd != -1) {
+	    /* asked for a file, and we can open that file:
+	       include info messages */
+	    level = RS_LOG_INFO;
+	} else {
+	    /* asked for a file, can't use it; use stderr instead */
+	    fd = STDERR_FILENO;
+	    save_errno = errno;
+	    failed_to_open_logfile = 1;
+	}
     } else {
-        /* not asked for file */
-        if ((logfd_name = getenv("UNCACHED_ERR_FD")) == NULL ||
-            (fd = atoi(logfd_name)) == 0) {
-            fd = STDERR_FILENO;
-        }
+	/* not asked for file */
+	if ((logfd_name = getenv("UNCACHED_ERR_FD")) == NULL ||
+	    (fd = atoi(logfd_name)) == 0) {
+	    fd = STDERR_FILENO;
+	}
     }
 
     if (getenv_bool("MRCC_VERBOSE", 0)) {
-        level = RS_LOG_DEBUG;
+	level = RS_LOG_DEBUG;
     }
 
     rs_add_logger(rs_logger_file, level, NULL, fd);
 
     if (failed_to_open_logfile) {
-        rs_log_error("failed to open logfile %s: %s",
-                     logfile, strerror(save_errno));
+	rs_log_error("failed to open logfile %s: %s",
+		     logfile, strerror(save_errno));
     }
 }

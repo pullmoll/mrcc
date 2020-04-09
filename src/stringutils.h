@@ -1,8 +1,6 @@
 // mrcc - A C Compiler system on MapReduce
 // Zhiqiang Ma, https://www.ericzma.com
-
-#ifndef _HEADER_STR_UTILS_H
-# define _HEADER_STR_UTILS_H
+#pragma once
 
 #define str_equal(a, b) (!strcmp((a), (b)))
 
@@ -39,7 +37,6 @@ int str_endswith(const char *tail, const char *tiger);
 #else
 #define LLONG long
 #endif
-
 
 /* format read states */
 #define DP_S_DEFAULT 0
@@ -87,5 +84,3 @@ int asprintf(char **ptr, const char *format, ...);
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *d, const char *s, size_t bufsize);
 #endif
-
-#endif //_HEADER_STR_UTILS_H

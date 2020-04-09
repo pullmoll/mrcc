@@ -48,11 +48,14 @@ const char* fs_out_dir_suffix = ".odir";
 const char* net_file_prefix_for_clean_up = "#";
 
 
-/*
- * append out file suffix to cpp_fname
- * caller is responsible for free the return string
+/**
+ * @brief Append out file suffix to cpp_fname.
+ * Caller is responsible for free()ing the returned string.
+ * @param cpp_fname filename of the preprocessed input file.
+ * @return filename with fs_out_file_suffix appended, or NULL on failure.
  */
-char* name_local_cpp_to_local_outfile(char* cpp_fname)
+char*
+name_local_cpp_to_local_outfile(char* cpp_fname)
 {
     char* fsname = NULL;
     if (asprintf(&fsname, "%s%s", cpp_fname, fs_out_file_suffix)
@@ -62,11 +65,14 @@ char* name_local_cpp_to_local_outfile(char* cpp_fname)
     return fsname;
 }
 
-/*
- * append out dir suffix to cpp_fname
- * caller is responsible for free the return string
+/**
+ * @brief Append out dir suffix to cpp_fname.
+ * Caller is responsible for free()ing the returned string.
+ * @param cpp_fname filename of the preprocessed input file.
+ * @return filename with fs_out_file_suffix appended, or NULL on failure.
  */
-char* name_local_cpp_to_local_outdir(char* cpp_fname)
+char*
+name_local_cpp_to_local_outdir(char* cpp_fname)
 {
     char* fsname = NULL;
     if (asprintf(&fsname, "%s%s", cpp_fname, fs_out_dir_suffix)
@@ -76,10 +82,14 @@ char* name_local_cpp_to_local_outdir(char* cpp_fname)
     return fsname;
 }
 
-/*
- * caller is responsible for free return char*
+/**
+ * @brief Prepend the fs_top_dir string before a local filename.
+ * Caller is responsible for free()ing the returned string.
+ * @param local filename of the local file.
+ * @return filename with fs_out_file_suffix appended, or NULL on failure.
  */
-char* name_local_to_fs(char* localname)
+char*
+name_local_to_fs(char* localname)
 {
     char* fsname = NULL;
     if (asprintf(&fsname, "%s%s", fs_top_dir, localname) == -1) {
@@ -88,10 +98,14 @@ char* name_local_to_fs(char* localname)
     return fsname;
 }
 
-/*
- * caller is responsible for free return char*
+/**
+ * @brief Remove the fs_top_dir string from a file system filename.
+ * Caller is responsible for free()ing the returned string.
+ * @param fsname filename in the file system.
+ * @return filename with fs_out_file_suffix removed, or NULL on failure.
  */
-char* name_fs_to_local(char* fsname)
+char*
+name_fs_to_local(char* fsname)
 {
     if (!str_startswith(fs_top_dir, fsname)) {
         return NULL;
@@ -99,15 +113,17 @@ char* name_fs_to_local(char* fsname)
     return strdup(fsname + strlen(fs_top_dir));
 }
 
-/*
- * put file to net fs
+/**
+ * @brief Put file to net fs.
+ * @param localsrc local source filename.
+ * @param dst destination filename.
+ * @return 0 on success, or error return code.
  */
-
 int put_file_fs(char* localsrc, char* dst)
 {
     int ret;
     char* args = NULL;
-    if (asprintf(&args, "%s %s %s", 
+    if (asprintf(&args, "%s %s %s",
                 put_file_fs_cmd, localsrc, dst) == -1) {
         return EXIT_OUT_OF_MEMORY;
     }
@@ -116,14 +132,17 @@ int put_file_fs(char* localsrc, char* dst)
     return ret;
 }
 
-/*
- * get file from net fs
+/**
+ * @brief Put file to net fs.
+ * @param src source filename.
+ * @param localdst local destination filename.
+ * @return 0 on success, or error return code.
  */
 int get_file_fs(char* src, char* localdst)
 {
     int ret;
     char* args = NULL;
-    if (asprintf(&args, "%s %s %s", 
+    if (asprintf(&args, "%s %s %s",
                 get_file_fs_cmd, src, localdst) == -1) {
         return EXIT_OUT_OF_MEMORY;
     }
@@ -167,7 +186,7 @@ int del_dir_fs(char* fname)
 
 int is_cleanup_on_fs(char* fname)
 {
-    return (str_startswith(net_file_prefix_for_clean_up, fname));
+    return str_startswith(net_file_prefix_for_clean_up, fname);
 }
 
 
@@ -180,7 +199,9 @@ int cleanup_file_fs(char* fname)
 int add_cleanup_fs(char* fname)
 {
     char* fs_fname = NULL;
-    if(asprintf(&fs_fname, "%s%s", net_file_prefix_for_clean_up, fname) == -1) {
+    int ret;
+    ret = asprintf(&fs_fname, "%s%s", net_file_prefix_for_clean_up, fname);
+    if (ret == -1) {
         rs_log_error("out of memory when add_cleanup_fs");
         return EXIT_OUT_OF_MEMORY;
     }

@@ -44,10 +44,13 @@ int mr_exec(char* argv, char* cpp_fname, char* out_fname)
     char* fs_out_dir = NULL;
     char* mr_argv = NULL;
 
-    if ((out_dir = name_local_cpp_to_local_outdir(cpp_fname)) == NULL) {
+    out_dir = name_local_cpp_to_local_outdir(cpp_fname);
+    if (out_dir == NULL) {
         return EXIT_OUT_OF_MEMORY;
     }
-    if ((fs_out_dir = name_local_to_fs(out_dir)) == NULL) {
+
+    fs_out_dir = name_local_to_fs(out_dir);
+    if (fs_out_dir == NULL) {
         return EXIT_OUT_OF_MEMORY;
     }
     free(out_dir);
@@ -67,5 +70,3 @@ int mr_exec(char* argv, char* cpp_fname, char* out_fname)
 
     return ret;
 }
-
-
